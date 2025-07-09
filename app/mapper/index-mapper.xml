@@ -11,4 +11,11 @@
             latitude = EXCLUDED.latitude,
             longitude = EXCLUDED.longitude
     </insert>
+
+    <select id="getPoiList">
+        SELECT
+            title, latitude, longitude
+        FROM
+            poi_data
+    </select>
 </mapper>

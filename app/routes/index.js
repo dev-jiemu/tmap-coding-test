@@ -1,18 +1,25 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
 const indexController = require('../controllers/indexController');
 
-/* GET home page. */
-router.get('/index', function(req, res, next) {
-  res.render('index', { title: 'Express' });
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: {fileSize: 10 * 1024 * 1024} // 10MB 제한
 });
 
-router.post('/api/upload-poi', (req, res, next) => {
+/* GET home page. */
+router.get('/index', function (req, res, next) {
+    res.render('index', {title: 'Express'});
+});
 
-})
+/* GET script data */
+router.get('/getScript', indexController.getScript);
 
-router.get('/api/upload-poi', (req, res, next) => {
+/* excel import */
+router.post('/api/upload-poi', upload.single('poiFile'), indexController.uploadPoi)
 
-})
+/* poi list get */
+router.get('/api/upload-poi', indexController.getPoiList)
 
 module.exports = router;
