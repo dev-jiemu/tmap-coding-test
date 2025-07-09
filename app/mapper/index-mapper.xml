@@ -2,5 +2,13 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="poi">
-
+    <!-- upsert (insert + update) -->
+    <insert id="updatePoi">
+        INSERT INTO poi_data (title, latitude, longitude)
+        VALUES (#{title}, #{latitude}, #{longitude})
+        ON CONFLICT (title)
+        DO UPDATE SET
+            latitude = EXCLUDED.latitude,
+            longitude = EXCLUDED.longitude
+    </insert>
 </mapper>
