@@ -10,10 +10,8 @@ const upload = multer({
 
 /* GET home page. */
 router.get('/index', function (req, res, next) {
-    const TMAP_APP_KEY = process.env.TMAP_APP_KEY || 'empty';
     res.render('index', {
         title: 'Express',
-        tmapKey: TMAP_APP_KEY
     });
 });
 

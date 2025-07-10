@@ -11,7 +11,6 @@
     <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css"/>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 
-    <script src="https://apis.openapi.sk.com/tmap/jsv2?version=1&appKey=<%= tmapKey %>"></script>
     <script src="/getScript"></script>
 </head>
 
@@ -23,77 +22,129 @@
 </section>
 
 <script>
-    // TMAP 초기화 함수
     function initTmap() {
         console.log('Initializing TMAP...');
-        
+
         try {
-            var map = new Tmapv2.Map("map_div", {
-                center: new Tmapv2.LatLng(37.566481622437934, 126.98502302169841),
-                width: "100%", 
+            let map = new Tmapv2.Map("map_div", {
+                center: new Tmapv2.LatLng(37.529521713, 126.964540921),
+                width: "100%",
                 height: "100%",
                 zoom: 15
             });
-            
+
             window.tmapInstance = map;
             window.tmapInitialized = true;
             window.tmapMarkers = [];
-            
+
             console.log('TMAP initialized successfully!');
-            
+
         } catch (error) {
             console.error('TMAP initialization failed:', error);
         }
     }
-    
-    // TMAP 마커 추가 함수
+
     function addTmapMarker(poi) {
         if (!window.tmapInitialized || !window.tmapInstance) {
             console.log('TMAP not ready, skipping marker:', poi.title);
             return;
         }
-        
+
         try {
-            var marker = new Tmapv2.Marker({
+            let marker = new Tmapv2.Marker({
                 position: new Tmapv2.LatLng(poi.latitude, poi.longitude),
                 icon: "/images/pin-location.svg",
                 iconSize: new Tmapv2.Size(24, 38),
                 title: poi.title,
                 map: window.tmapInstance
             });
-            
-            marker.addListener("click", function() {
+
+            marker.addListener("click", function () {
                 alert("POI: " + poi.title);
             });
-            
+
             if (!window.tmapMarkers) window.tmapMarkers = [];
             window.tmapMarkers.push(marker);
-            
+
             console.log('Marker added:', poi.title);
-            
+
         } catch (error) {
             console.error('Failed to add marker:', poi.title, error);
         }
     }
 
-    // 페이지 로드 후 TMAP 초기화
-    document.addEventListener('DOMContentLoaded', function() {
-        // TMAP 라이브러리 로드 대기
-        setTimeout(function() {
+    // current location
+    let currentLocationMarker = null;
+
+    function addCurrentLocationMarker(latitude, longitude) {
+        if (!window.tmapInitialized || !window.tmapInstance) {
+            console.log('TMAP not ready');
+            return;
+        }
+
+        // 기존 현재 위치 마커가 있으면 제거
+        if (currentLocationMarker) {
+            currentLocationMarker.setMap(null);
+        }
+
+        try {
+            currentLocationMarker = new Tmapv2.Marker({
+                position: new Tmapv2.LatLng(latitude, longitude),
+                icon: "/images/pin-red.svg",
+                iconSize: new Tmapv2.Size(30, 30),
+                title: "현재 위치",
+                map: window.tmapInstance
+            });
+
+            console.log('Current location marker added:', latitude, longitude);
+
+        } catch (error) {
+            console.error('Failed to add current location marker:', error);
+        }
+    }
+
+    function getCurrentLocation() {
+        if (!navigator.geolocation) {
+            console.log('Geolocation is not supported by this browser.');
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                const latitude = position.coords.latitude;
+                const longitude = position.coords.longitude;
+                
+                console.log('Current position:', latitude, longitude);
+                addCurrentLocationMarker(latitude, longitude);
+            },
+            function(error) {
+                console.error('Unable to retrieve location information:', error);
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 60000
+            }
+        );
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        setTimeout(function () {
             initTmap();
-            
-            // TMAP 초기화 완료 후 POI 로드
-            setTimeout(function() {
+
+            setTimeout(function () {
                 if (typeof loadPOIMarkers === 'function') {
                     console.log('Loading POI markers after TMAP initialization...');
                     loadPOIMarkers();
                 }
+
+                console.log('Getting current location...');
+                getCurrentLocation();
             }, 500);
-            
+
         }, 1000);
     });
 </script>
-<!-- TODO : refresh button fix -->
 <div class="fixed top-0">
     <div class="p-1 bg-white flex items-center gap-2">
         <label class="input w-full">
@@ -126,6 +177,7 @@
             class="grid size-15 place-content-center rounded-full border border-[#ccc] bg-[#fff] shadow-md"
             aria-label="refresh"
             title="refresh"
+            onclick="refresh()"
     >
         <span>refresh</span>
     </button>
@@ -141,6 +193,74 @@
     </button>
 </div>
 
-</body>
+<script>
+    function refresh() {
+        console.log('Refresh button clicked');
+        loadPOIMarkers();
+    }
 
+    // 기존 마커 있으면 지움
+    function clearTmapMarkers() {
+        if (window.tmapMarkers && window.tmapMarkers.length > 0) {
+            console.log('Clearing existing markers:', window.tmapMarkers.length);
+            window.tmapMarkers.forEach(marker => {
+                marker.setMap(null);
+            });
+            window.tmapMarkers = [];
+        }
+    }
+
+    function loadPOIMarkers() {
+        console.log('Loading POI markers...');
+
+        clearTmapMarkers()
+
+        fetch('/api/poi-list')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('poi list retrieved:', data);
+
+                    if (data.resultData && data.resultData.length > 0) {
+                        console.log('Found', data.resultData.length, 'POI items');
+                        data.resultData.forEach(poi => {
+                            console.log('POI:', poi.title, poi.latitude, poi.longitude);
+                            addTmapMarker(poi);
+                        });
+                    } else {
+                        console.log('poi data empty');
+                    }
+                })
+                .catch(error => {
+                    console.error('failed to load poi list:', error);
+                });
+    }
+
+    document.getElementById('excelFileInput').addEventListener('change', function (e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        console.log('File selected:', file.name);
+
+        const formData = new FormData();
+        formData.append('poiFile', file);
+
+        fetch('/api/upload-poi', {
+            method: 'POST',
+            body: formData
+        })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Upload success:', data);
+                    alert('Upload completed! ' + data.statusMessage);
+                    loadPOIMarkers();
+                })
+                .catch(error => {
+                    console.error('Upload failed:', error);
+                    alert('Upload failed: ' + error.message);
+                });
+
+        e.target.value = ''; // 초기화
+    });
+</script>
+</body>
 </html>

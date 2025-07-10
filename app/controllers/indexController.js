@@ -138,81 +138,14 @@ exports.getPoiList = (req, res, next) => {
 	})
 }
 
-exports.getScript =  (req, res, next) => {
-	res.setHeader('Content-Type', 'application/javascript');
-	res.send(`
-        console.log('script loaded :)');
+exports.getScript = async (req, res, next) => {
+    const TMAP_APP_KEY = process.env.TMAP_APP_KEY || 'empty';
 
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('DOM loaded, initializing events...');
- 
-            const fileInput = document.getElementById('excelFileInput');
-            if (fileInput) {
-                fileInput.addEventListener('change', function (e) {
-                    const file = e.target.files[0];
-                    if (!file) return;
+    res.setHeader('Content-Type', 'application/javascript');
 
-                    console.log('File selected:', file.name);
+    const tmapApiUrl = `https://apis.openapi.sk.com/tmap/jsv2?version=1&appKey=${TMAP_APP_KEY}`;
+    const tmapResponse = await fetch(tmapApiUrl);
+    const tmapScriptContent = await tmapResponse.text();
 
-                    const formData = new FormData();
-                    formData.append('poiFile', file);
-
-                    fetch('/api/upload-poi', {
-                        method: 'POST',
-                        body: formData
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        console.log('Upload success:', data);
-                        alert('Upload completed! ' + data.statusMessage);
-                        loadPOIMarkers();
-                    })
-                    .catch(error => {
-                        console.error('Upload failed:', error);
-                        alert('Upload failed: ' + error.message);
-                    });
-
-                    e.target.value = '';
-                });
-            } else {
-                console.error('file input element not found');
-            }
-
-            const refreshBtn = document.querySelector('button[aria-label="refresh"]');
-            if (refreshBtn) {
-                refreshBtn.addEventListener('click', function() {
-                    console.log('Refresh button clicked');
-                    loadPOIMarkers();
-                });
-            } else {
-                console.error('Refresh button not found');
-            }
-           
-            // loadPOIMarkers 자동 호출 제거 (index.ejs에서 TMAP 초기화 후 호출)
-            console.log('POI loading will be handled after TMAP initialization');
-        });
-
-        function loadPOIMarkers() {
-            console.log('Loading POI markers...');
-            
-            fetch('/api/poi-list')
-            .then(response => response.json())
-            .then(data => {
-                console.log('poi list retrieved:', data);
-                
-                if (data.resultData && data.resultData.length > 0) {
-                    console.log('Found', data.resultData.length, 'POI items');
-                    data.resultData.forEach(poi => {
-                         console.log('POI:', poi.title, poi.latitude, poi.longitude);
-                         addTmapMarker(poi);
-                    });
-                } else {
-                    console.log('poi data empty');
-                }
-            })
-            .catch(error => {
-                console.error('failed to load poi list:', error);
-            });
-        }
-    `);
+    res.send(tmapScriptContent);
 };
