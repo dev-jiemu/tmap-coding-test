@@ -10,7 +10,11 @@ const upload = multer({
 
 /* GET home page. */
 router.get('/index', function (req, res, next) {
-    res.render('index', {title: 'Express'});
+    const TMAP_APP_KEY = process.env.TMAP_APP_KEY || 'empty';
+    res.render('index', {
+        title: 'Express',
+        tmapKey: TMAP_APP_KEY
+    });
 });
 
 /* GET script data */
@@ -20,6 +24,6 @@ router.get('/getScript', indexController.getScript);
 router.post('/api/upload-poi', upload.single('poiFile'), indexController.uploadPoi)
 
 /* poi list get */
-router.get('/api/upload-poi', indexController.getPoiList)
+router.get('/api/poi-list', indexController.getPoiList)
 
 module.exports = router;

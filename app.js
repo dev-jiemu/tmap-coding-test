@@ -3,6 +3,9 @@ let express = require('express');
 let cookieParser = require('cookie-parser');
 let logger = require('morgan');
 
+// dotenv 설정 추가
+require('dotenv').config();
+
 let indexRouter = require('./app/routes/index');
 const http = require("http");
 

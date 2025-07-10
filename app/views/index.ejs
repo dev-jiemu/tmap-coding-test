@@ -10,6 +10,8 @@
     <title>TmapCodingTest</title>
     <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css"/>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+    <script src="https://apis.openapi.sk.com/tmap/jsv2?version=1&appKey=<%= tmapKey %>"></script>
     <script src="/getScript"></script>
 </head>
 
@@ -20,6 +22,78 @@
     <div class="size-full object-cover" id="map_div"></div>
 </section>
 
+<script>
+    // TMAP 초기화 함수
+    function initTmap() {
+        console.log('Initializing TMAP...');
+        
+        try {
+            var map = new Tmapv2.Map("map_div", {
+                center: new Tmapv2.LatLng(37.566481622437934, 126.98502302169841),
+                width: "100%", 
+                height: "100%",
+                zoom: 15
+            });
+            
+            window.tmapInstance = map;
+            window.tmapInitialized = true;
+            window.tmapMarkers = [];
+            
+            console.log('TMAP initialized successfully!');
+            
+        } catch (error) {
+            console.error('TMAP initialization failed:', error);
+        }
+    }
+    
+    // TMAP 마커 추가 함수
+    function addTmapMarker(poi) {
+        if (!window.tmapInitialized || !window.tmapInstance) {
+            console.log('TMAP not ready, skipping marker:', poi.title);
+            return;
+        }
+        
+        try {
+            var marker = new Tmapv2.Marker({
+                position: new Tmapv2.LatLng(poi.latitude, poi.longitude),
+                icon: "/images/pin-location.svg",
+                iconSize: new Tmapv2.Size(24, 38),
+                title: poi.title,
+                map: window.tmapInstance
+            });
+            
+            marker.addListener("click", function() {
+                alert("POI: " + poi.title);
+            });
+            
+            if (!window.tmapMarkers) window.tmapMarkers = [];
+            window.tmapMarkers.push(marker);
+            
+            console.log('Marker added:', poi.title);
+            
+        } catch (error) {
+            console.error('Failed to add marker:', poi.title, error);
+        }
+    }
+
+    // 페이지 로드 후 TMAP 초기화
+    document.addEventListener('DOMContentLoaded', function() {
+        // TMAP 라이브러리 로드 대기
+        setTimeout(function() {
+            initTmap();
+            
+            // TMAP 초기화 완료 후 POI 로드
+            setTimeout(function() {
+                if (typeof loadPOIMarkers === 'function') {
+                    console.log('Loading POI markers after TMAP initialization...');
+                    loadPOIMarkers();
+                }
+            }, 500);
+            
+        }, 1000);
+    });
+</script>
+<!-- TODO : refresh button fix -->
 <div class="fixed top-0">
     <div class="p-1 bg-white flex items-center gap-2">
         <label class="input w-full">

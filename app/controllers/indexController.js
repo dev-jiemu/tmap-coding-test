@@ -115,7 +115,7 @@ exports.uploadPoi = (req, res, next) => {
             resultCnt: 0
         }))
     }
-}
+};
 
 
 exports.getPoiList = (req, res, next) => {
@@ -188,14 +188,14 @@ exports.getScript =  (req, res, next) => {
                 console.error('Refresh button not found');
             }
            
-            console.log('load poi lists');
-            loadPOIMarkers();
+            // loadPOIMarkers 자동 호출 제거 (index.ejs에서 TMAP 초기화 후 호출)
+            console.log('POI loading will be handled after TMAP initialization');
         });
 
         function loadPOIMarkers() {
             console.log('Loading POI markers...');
             
-            fetch('/api/upload-poi')
+            fetch('/api/poi-list')
             .then(response => response.json())
             .then(data => {
                 console.log('poi list retrieved:', data);
@@ -204,7 +204,7 @@ exports.getScript =  (req, res, next) => {
                     console.log('Found', data.resultData.length, 'POI items');
                     data.resultData.forEach(poi => {
                          console.log('POI:', poi.title, poi.latitude, poi.longitude);
-                         // TODO :: map marker add
+                         addTmapMarker(poi);
                     });
                 } else {
                     console.log('poi data empty');
@@ -215,4 +215,4 @@ exports.getScript =  (req, res, next) => {
             });
         }
     `);
-}
+};
