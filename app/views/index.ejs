@@ -23,7 +23,7 @@
 
 <script>
     function initTmap() {
-        console.log('Initializing TMAP...');
+        console.log('initializing TMAP...');
 
         try {
             let map = new Tmapv2.Map("map_div", {
@@ -63,6 +63,9 @@
                 alert("POI: " + poi.title);
             });
 
+            // title search
+            marker.poiTitle = poi.title;
+
             if (!window.tmapMarkers) window.tmapMarkers = [];
             window.tmapMarkers.push(marker);
 
@@ -73,16 +76,16 @@
         }
     }
 
-    // current location
     let currentLocationMarker = null;
+    let locationWatchId = null;
 
-    function addCurrentLocationMarker(latitude, longitude) {
+    // current location with watch
+    function getCurrentLocation(latitude, longitude) {
         if (!window.tmapInitialized || !window.tmapInstance) {
-            console.log('TMAP not ready');
+            console.error('TMAP not ready')
             return;
         }
 
-        // 기존 현재 위치 마커가 있으면 제거
         if (currentLocationMarker) {
             currentLocationMarker.setMap(null);
         }
@@ -96,36 +99,64 @@
                 map: window.tmapInstance
             });
 
-            console.log('Current location marker added:', latitude, longitude);
+            console.log('current location marker updated:', latitude, longitude);
 
         } catch (error) {
-            console.error('Failed to add current location marker:', error);
+            console.error('failed to add current location marker:', error);
         }
     }
 
-    function getCurrentLocation() {
+    function startLocationTracking() {
         if (!navigator.geolocation) {
-            console.log('Geolocation is not supported by this browser.');
+            console.log('geolocation is not supported by this browser.');
             return;
         }
 
-        navigator.geolocation.getCurrentPosition(
-            function(position) {
-                const latitude = position.coords.latitude;
-                const longitude = position.coords.longitude;
-                
-                console.log('Current position:', latitude, longitude);
-                addCurrentLocationMarker(latitude, longitude);
-            },
-            function(error) {
-                console.error('Unable to retrieve location information:', error);
-            },
-            {
-                enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 60000
-            }
+        locationWatchId = navigator.geolocation.watchPosition(
+                function (position) {
+                    const latitude = position.coords.latitude;
+                    const longitude = position.coords.longitude;
+
+                    console.log('position updated:', latitude, longitude);
+                    getCurrentLocation(latitude, longitude);
+                },
+                function (error) {
+                    console.error('unable to retrieve location information:', error);
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 30000 // 30s
+                }
         );
+    }
+
+    function searchMarker(searchText) {
+        if (!searchText || !searchText.trim()) {
+            console.log('search text is empty')
+            return;
+        }
+
+        const filteredMarkers = window.tmapMarkers.filter(marker =>
+                marker.poiTitle &&
+                marker.poiTitle.toLowerCase().includes(searchText)
+        );
+
+        if (filteredMarkers.length > 0) {
+            const targetMarker = filteredMarkers[0];
+            const position = targetMarker.getPosition();
+
+            // 지도 이동 처리
+            window.tmapInstance.setCenter(position);
+            window.tmapInstance.setZoom(15);
+
+            console.log(`moved to ${targetMarker.poiTitle}`);
+
+            return filteredMarkers;
+        } else {
+            console.log('search is not found');
+            return [];
+        }
     }
 
     document.addEventListener('DOMContentLoaded', function () {
@@ -134,12 +165,12 @@
 
             setTimeout(function () {
                 if (typeof loadPOIMarkers === 'function') {
-                    console.log('Loading POI markers after TMAP initialization...');
+                    console.log('loading POI markers after TMAP initialization...');
                     loadPOIMarkers();
                 }
 
-                console.log('Getting current location...');
-                getCurrentLocation();
+                console.log('getting current location...');
+                startLocationTracking(); // 현재 위치 추적
             }, 500);
 
         }, 1000);
@@ -148,10 +179,12 @@
 <div class="fixed top-0">
     <div class="p-1 bg-white flex items-center gap-2">
         <label class="input w-full">
-            <input type="search" required placeholder="Search"/>
+            <input type="search" id="searchInput" required placeholder="Search" 
+                   onkeypress="if(event.key==='Enter') searchMarker(this.value.toLowerCase().trim())"/>
         </label>
 
-        <button type="button" class="flex-none size-10 cursor-pointer">
+        <button type="button" class="flex-none size-10 cursor-pointer" 
+                onclick="searchMarker(document.getElementById('searchInput').value.toLowerCase().trim())">
             <svg class="w-full h-[2rem] opacity-50" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                 <g
                         stroke-linejoin="round"
@@ -202,7 +235,7 @@
     // 기존 마커 있으면 지움
     function clearTmapMarkers() {
         if (window.tmapMarkers && window.tmapMarkers.length > 0) {
-            console.log('Clearing existing markers:', window.tmapMarkers.length);
+            console.log('clearing existing markers:', window.tmapMarkers.length);
             window.tmapMarkers.forEach(marker => {
                 marker.setMap(null);
             });
@@ -211,7 +244,7 @@
     }
 
     function loadPOIMarkers() {
-        console.log('Loading POI markers...');
+        console.log('loading POI markers...');
 
         clearTmapMarkers()
 
@@ -239,7 +272,7 @@
         const file = e.target.files[0];
         if (!file) return;
 
-        console.log('File selected:', file.name);
+        console.log('file selected:', file.name);
 
         const formData = new FormData();
         formData.append('poiFile', file);
@@ -250,13 +283,13 @@
         })
                 .then(response => response.json())
                 .then(data => {
-                    console.log('Upload success:', data);
-                    alert('Upload completed! ' + data.statusMessage);
+                    console.log('upload success:', data);
+                    alert('upload completed! ' + data.statusMessage);
                     loadPOIMarkers();
                 })
                 .catch(error => {
-                    console.error('Upload failed:', error);
-                    alert('Upload failed: ' + error.message);
+                    console.error('upload failed:', error);
+                    alert('upload failed: ' + error.message);
                 });
 
         e.target.value = ''; // 초기화
